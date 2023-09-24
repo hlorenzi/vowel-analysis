@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "jsx": "preserve",
+        "jsxImportSource": "solid-js",
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "allowImportingTsExtensions": true,
+        "noEmit": true,
+        "target": "es2017",
+        "strictNullChecks": true,
+        "noImplicitAny": true
+    }
+}

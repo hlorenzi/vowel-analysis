@@ -20,7 +20,7 @@ export function AnalysisChart(props: {
     return <canvas
         ref={ canvas }
         style={{
-            "width": "700px",
+            "width": "min(700px, calc(100dvw - 2em))",
             "height": "120px",
             "border-radius": "0.5em",
         }}

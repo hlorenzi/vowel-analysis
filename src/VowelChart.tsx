@@ -17,6 +17,8 @@ export function VowelChart(props: {
         synth: props.synth,
         mouseDown: false,
         mousePosNormalized: { x: 0, y: 0 },
+        mousePosFormants: { f1: 0, f2: 0 },
+        mousePath: [],
     }
 
     const [width, setWidth] = Solid.createSignal(700)
@@ -29,18 +31,37 @@ export function VowelChart(props: {
         state.canvas.addEventListener("mousedown", (ev) => mouseDown(state, ev))
         window.addEventListener("mousemove", (ev) => mouseMove(state, ev))
         window.addEventListener("mouseup", (ev) => mouseUp(state, ev))
-        draw(state)
+        state.canvas.addEventListener("touchstart", (ev) => mouseDown(state, ev));
+        window.addEventListener("touchend", (ev) => mouseUp(state, ev));
+        window.addEventListener("touchcancel", (ev) => mouseUp(state, ev));
+        window.addEventListener("touchmove", (ev) => mouseMove(state, ev));
+        window.requestAnimationFrame(() => draw(state))
     })
 
 
     return <canvas
         ref={ state.canvas }
         style={{
-            "width": "700px",
-            "height": "400px",
+            "width": "min(700px, calc(100dvw - 2em))",
+            "height": "min(400px, 60dvh)",
             "border-radius": "0.5em",
         }}
     />
+}
+
+
+interface Position
+{
+    x: number
+    y: number
+}
+
+
+interface PathPoint
+{
+    x: number
+    y: number
+    timer: number
 }
 
 
@@ -51,30 +72,50 @@ interface State
     synth: VowelSynth
 
     mouseDown: boolean
-    mousePosNormalized: {
-        x: number,
-        y: number,
+    mousePosNormalized: Position
+    mousePosFormants: {
+        f1: number
+        f2: number
     }
+    mousePath: PathPoint[]
 }
 
 
 function updateMousePos(
     state: State,
-    ev: MouseEvent)
+    ev: MouseEvent | TouchEvent)
 {
     const rect = state.canvas.getBoundingClientRect()
 
-    const x = (ev.clientX - rect.x) / rect.width
-    const y = (ev.clientY - rect.y) / rect.height
+    const [clientX, clientY] = "touches" in ev ?
+        [ev.touches.item(0)?.clientX ?? 0, ev.touches.item(0)?.clientY ?? 0] :
+        [ev.clientX, ev.clientY]
+
+    const x = (clientX - rect.x) / rect.width
+    const y = (clientY - rect.y) / rect.height
 
     state.mousePosNormalized = { x, y }
 
-    const f2 = mapViewToValue(1 - x, Data.f2Min, Data.f2Max)
-    const f1 = mapViewToValue(y, Data.f1Min, Data.f1Max)
+    state.mousePosFormants = {
+        f1: Math.floor(mapViewToValue(y, Data.f1Min, Data.f1Max)),
+        f2: Math.floor(mapViewToValue(1 - x, Data.f2Min, Data.f2Max)),
+    }
 
-    console.log(f1.toFixed(0), f2.toFixed(0))
+    /*console.log(
+        "mouse:",
+        "F1 = ", state.mousePosFormants.f1, "Hz",
+        "F2 = ", state.mousePosFormants.f2, "Hz")*/
 
-    state.synth.setFrequencies(f1, f2)
+    if (state.mouseDown)
+    {
+        state.mousePath.push({ ...state.mousePosNormalized, timer: 1 })
+        while (state.mousePath.length > 200)
+            state.mousePath.splice(0, 1)
+    }
+    
+    state.synth.setFrequencies(
+        state.mousePosFormants.f1,
+        state.mousePosFormants.f2)
 }
 
 
@@ -94,36 +135,34 @@ function mapValueToView(x: number, min: number, max: number)
 
 function mouseDown(
     state: State,
-    ev: MouseEvent)
+    ev: MouseEvent | TouchEvent)
 {
     ev.preventDefault()
     state.mouseDown = true
     state.synth.resume()
     state.synth.setGain(1)
+    state.mousePath = []
     updateMousePos(state, ev)
-    draw(state)
 }
 
 
 function mouseMove(
     state: State,
-    ev: MouseEvent)
+    ev: MouseEvent | TouchEvent)
 {
     ev.preventDefault()
     updateMousePos(state, ev)
-    draw(state)
 }
 
 
 function mouseUp(
     state: State,
-    ev: MouseEvent)
+    ev: MouseEvent | TouchEvent)
 {
     ev.preventDefault()
     state.mouseDown = false
     state.synth.setGain(0)
     updateMousePos(state, ev)
-    draw(state)
 }
 
 
@@ -145,9 +184,14 @@ const ipaVowels = [
 ]
 
 
+const isMobile = window.matchMedia("(pointer: coarse)").matches
+
+
 function draw(
     state: State)
 {
+    window.requestAnimationFrame(() => draw(state))
+
     const pixelRatio = window.devicePixelRatio
     const rect = state.canvas.getBoundingClientRect()
     const w =
@@ -183,18 +227,21 @@ function draw(
     state.ctx.lineWidth = 1
     state.ctx.strokeStyle = "#aaa"
     state.ctx.fillStyle = "#aaa"
-    state.ctx.font = "0.75em Times New Roman"
+    state.ctx.font = `${ isMobile ? "1.5em" : "0.75em" } Times New Roman`
     state.ctx.fillStyle = "#000"
     state.ctx.textAlign = "left"
     state.ctx.textBaseline = "top"
-    for (let freq = Data.f2Min + 500; freq <= Data.f2Max; freq += 500)
+    for (let freq = Data.f2Min + 500; freq < Data.f2Max; freq += 500)
     {
         const x = Math.floor(w - mapValueToView(freq, Data.f2Min, Data.f2Max) * w)
         state.ctx.beginPath()
         state.ctx.moveTo(x, 0)
         state.ctx.lineTo(x, h)
         state.ctx.stroke()
-        state.ctx.fillText(freq + " Hz", x + 2, 2)
+        state.ctx.fillText(
+            freq == Data.f2Min + 500 ? `F2 = ${ freq } Hz` : `${ freq }`,
+            x + 2,
+            2)
     }
     state.ctx.textBaseline = "bottom"
     for (let freq = Data.f1Min + 200; freq <= Data.f1Max; freq += 200)
@@ -204,11 +251,14 @@ function draw(
         state.ctx.moveTo(0, y)
         state.ctx.lineTo(w, y)
         state.ctx.stroke()
-        state.ctx.fillText(freq + " Hz", 2, y - 2)
+        state.ctx.fillText(
+            freq == Data.f1Max ? `F1 = ${ freq } Hz` : `${ freq }`,
+            2,
+            y - 2)
     }
 
     // Draw IPA symbols
-    state.ctx.font = "2em Times New Roman"
+    state.ctx.font = `${ isMobile ? "2.5em" : "2em" } Times New Roman`
     state.ctx.fillStyle = "#000"
     state.ctx.textAlign = "center"
     state.ctx.textBaseline = "middle"
@@ -219,19 +269,56 @@ function draw(
         state.ctx.fillText(vowel.symbol, x, y)
     }
 
+    // Draw mouse path
+    state.ctx.strokeStyle = "#048"
+    state.ctx.lineWidth = 2
+    for (let p = 1; p < state.mousePath.length; p++)
+    {
+        state.ctx.beginPath()
+        const timer = Math.max(0, state.mousePath[p].timer)
+        state.ctx.strokeStyle = `rgb(0 40 255 / ${ 0.25 + 0.75 * timer })`
+
+        const pA = state.mousePath[p - 1]
+        const pB = state.mousePath[p]
+        state.ctx.moveTo(pA.x * w, pA.y * h)
+        state.ctx.lineTo(pB.x * w, pB.y * h)
+
+        const vecX = (pB.x - pA.x) * w
+        const vecY = (pB.y - pA.y) * h
+        const vecMagn = Math.sqrt(vecX * vecX + vecY * vecY)
+        const vecXN = vecX / vecMagn
+        const vecYN = vecY / vecMagn
+        const crossSize = 3
+        state.ctx.moveTo(pA.x * w - vecYN * crossSize, pA.y * h + vecXN * crossSize)
+        state.ctx.lineTo(pA.x * w + vecYN * crossSize, pA.y * h - vecXN * crossSize)
+
+        state.ctx.stroke()
+    }
+
+    state.mousePath.forEach((p) => p.timer -= 1 / 30)
+    
     // Draw mouse
     if (state.mouseDown)
     {
-        state.ctx.strokeStyle = "#048"
+        state.ctx.strokeStyle = "rgb(0 40 255)"
         state.ctx.lineWidth = 2
         state.ctx.beginPath()
         state.ctx.arc(
             state.mousePosNormalized.x * w,
             state.mousePosNormalized.y * h,
-            5,
+            2,
             0,
             Math.PI * 2)
         state.ctx.stroke()
+
+        state.ctx.font = `${ isMobile ? "1.5em" : "0.75em" } Times New Roman`
+        state.ctx.textAlign = "center"
+        state.ctx.textBaseline = "bottom"
+        state.ctx.fillText(
+            `(${ state.mousePosFormants.f1 }, ` +
+            `${ state.mousePosFormants.f2 } Hz)`,
+            state.mousePosNormalized.x * w,
+            state.mousePosNormalized.y * h + (isMobile ? -120 : -10))
     }
 
     state.ctx.restore()

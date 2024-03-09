@@ -104,19 +104,17 @@ export class VowelSynth
     {
         if (this.nodeMicSrc)
             return
-        
-        return new Promise<void>((resolve, reject) => {
 
-            const callback = (stream: MediaStream) => {
-                this.nodeMicSrc = this.ctx.createMediaStreamSource(stream)
-                this.nodeMicSrc.connect(this.nodeMicFilter)
-                resolve()
-            }
-
-            navigator.getUserMedia(
-                { audio: true },
-                callback,
-                reject)
-        })
+        try
+        {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            this.nodeMicSrc = this.ctx.createMediaStreamSource(stream)
+            this.nodeMicSrc.connect(this.nodeMicFilter)
+        }
+        catch (e)
+        {
+            window.alert("Could not open the microphone.\n\n" + e)
+            throw e
+        }
     }
 }

@@ -2,17 +2,20 @@ import { forwardLinearPrediction } from "./lpc.ts"
 import { findRoots, Complex } from "./roots.ts"
 
 
+// From: https://www.mathworks.com/help/signal/ug/formant-estimation-with-lpc-coefficients.html
 export function extractFormants(
     sample: Float32Array,
     samplingFrequency: number)
     : number[]
 {
-    //console.log("length", sample.length, "freq", samplingFrequency, "ratio", sample.length / samplingFrequency)
-    const sampleWindowed = sample.map((s, i) => s * hammingWindow(i, sample.length))
-    const sampleFiltered = preemphasisFilter(sampleWindowed)
-    //console.log(preemphasisFilter(new Float32Array([1, 1, 1, 1])))
+    const sampleWindowed =
+        sample.map((s, i) => s * hammingWindow(i, sample.length))
 
-    const lpc = forwardLinearPrediction(sampleFiltered, 8)
+    const sampleFiltered =
+        preemphasisFilter(sampleWindowed)
+
+    const lpc =
+        forwardLinearPrediction(sampleFiltered, 8)
 
     const roots = findRoots(lpc)
         .filter(c => c.imag >= 0)
@@ -23,13 +26,13 @@ export function extractFormants(
     const frequencies = angles
         .map(a => a * (samplingFrequency / (2 * Math.PI)))
 
-    const complexMagnitude = (c: Complex) => Math.sqrt(c.real * c.real + c.imag * c.imag)
+    const complexMagnitude =
+        (c: Complex) => Math.sqrt(c.real * c.real + c.imag * c.imag)
 
     const bandwidths = roots
         .map(r => -0.5 * (samplingFrequency / (2 * Math.PI)) * Math.log(complexMagnitude(r)))
 
     const formants = []
-    //console.log(frequencies.map(f => f.toFixed(0).padStart(4)), bandwidths.map(b => b.toFixed(0).padStart(4)))
     for (let i = 0; i < angles.length; i++)
     {
         const frequency = frequencies[i]

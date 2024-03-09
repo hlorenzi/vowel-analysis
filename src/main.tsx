@@ -19,8 +19,8 @@ function Page()
     }}>
         <br/>
         <br/>
-        Click and drag to synthesize vowel sounds.<br/>
-        The blue bars on the bottom chart indicate formant frequencies. (Work-in-progress)
+        Click and drag to synthesize vowel sounds via formant frequencies.<br/><br/>
+        The blue bars on the bottom chart shows formant frequencies extracted from the waveform data. (Not working properly)
         <br/>
         <br/>
         <VowelChart synth={ synth }/>

@@ -42,9 +42,9 @@ export function VowelChart(props: {
     return <canvas
         ref={ state.canvas }
         style={{
-            "width": "min(700px, calc(100dvw - 2em))",
-            "height": "min(400px, 60dvh)",
-            "border-radius": "0.5em",
+            "width": "100%",
+            "height": "50dvh",
+            "border-radius": "0.25em",
         }}
     />
 }

@@ -20,9 +20,9 @@ export function AnalysisChart(props: {
     return <canvas
         ref={ canvas }
         style={{
-            "width": "min(700px, calc(100dvw - 2em))",
-            "height": "120px",
-            "border-radius": "0.5em",
+            "width": "100%",
+            "height": "15dvh",
+            "border-radius": "0.25em",
         }}
     />
 }
@@ -107,7 +107,7 @@ function draw(
     }
     canvasCtx.stroke()
 
-    const timeData = synth.getAnalyserTimeData()
+    const timeData = synth.getWaveformLatest(Math.floor(synth.ctx.sampleRate * 0.025))
 
     canvasCtx.lineWidth = 2
     canvasCtx.strokeStyle = "#000"

@@ -6,6 +6,7 @@ module.exports = {
     
 	entry: {
 		main: path.resolve(__dirname, "src/main.tsx"),
+		audioWorklet: path.resolve(__dirname, "src/audioWorklet.ts"),
 	},
 	
 	output: {

@@ -21,9 +21,6 @@ export function VowelChart(props: {
         mousePath: [],
     }
 
-    const [width, setWidth] = Solid.createSignal(700)
-    const [height, setHeight] = Solid.createSignal(400)
-
 
     Solid.onMount(() => {
         state.ctx = state.canvas.getContext("2d")!
@@ -150,7 +147,9 @@ function mouseMove(
     state: State,
     ev: MouseEvent | TouchEvent)
 {
-    ev.preventDefault()
+    if (state.mouseDown)
+        ev.preventDefault()
+
     updateMousePos(state, ev)
 }
 
@@ -159,7 +158,9 @@ function mouseUp(
     state: State,
     ev: MouseEvent | TouchEvent)
 {
-    ev.preventDefault()
+    if (state.mouseDown)
+        ev.preventDefault()
+
     state.mouseDown = false
     state.synth.setGain(0)
     updateMousePos(state, ev)

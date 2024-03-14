@@ -1,27 +1,31 @@
-import { forwardLinearPrediction } from "./lpc.ts"
+import { forwardLinearPrediction, praatBurgMethod } from "./lpc.ts"
 import { findRoots, Complex } from "./roots.ts"
 
 
 // From: https://www.mathworks.com/help/signal/ug/formant-estimation-with-lpc-coefficients.html
 // From: https://github.com/praat/praat/blob/master/fon/Sound_to_Formant.cpp
 export function extractFormants(
-    /// An array of samples in the range [-1, 1]
+    /// An array of sound samples in the range [-1, 1]
     sample: Float32Array,
     /// The sampling frequency in hertz
     samplingFrequency: number)
     /// Returns the frequencies of the formants in hertz
     : number[]
 {
+    if (sample.every(s => s === 0))
+        return []
+
+    const samplePreemphasized =
+        //preemphasisFilter(sampleWindowed)
+        praatPreemphasis(sample, samplingFrequency)
+
     const sampleWindowed =
         //sample.map((s, i) => s * hammingWindow(i, sample.length))
-        sample.map((s, i) => s * praatGaussianWindow(i, sample.length))
-
-    const sampleFiltered =
-        //preemphasisFilter(sampleWindowed)
-        praatPreemphasis(sampleWindowed, samplingFrequency)
+        samplePreemphasized.map((s, i) => s * praatGaussianWindow(i, sample.length))
 
     const lpc =
-        forwardLinearPrediction(sampleFiltered, 10)
+        //forwardLinearPrediction(sampleWindowed, 10)
+        praatBurgMethod(sampleWindowed, 10)
 
     const roots = findRoots(lpc)
         .filter(c => c.imag >= 0)
@@ -30,11 +34,13 @@ export function extractFormants(
     const angles = roots
         .map(c => Math.atan2(c.imag, c.real))
 
+    const nyquistFrequency = samplingFrequency / 2
+
     const frequencies = angles
-        .map(a => a * samplingFrequency / 2 / Math.PI)
+        .map(a => a * nyquistFrequency / Math.PI)
 
     const bandwidths = roots
-        .map(r => -Math.log(complexMagnitude(r)) * samplingFrequency / 2 / Math.PI)
+        .map(r => -Math.log(complexMagnitude(r)) * nyquistFrequency / Math.PI)
 
     const formants = []
     for (let i = 0; i < angles.length; i++)
@@ -118,11 +124,11 @@ function praatPreemphasis(
 {
     const result = new Float32Array(array)
 
-    const frequency = 50
+    const preemphasisFrequency = 50
     const dx = 1 / samplingFrequency
-    const preEmphasis = Math.exp(-2.0 * Math.PI * frequency * dx)
+    const preEmphasis = Math.exp(-2.0 * Math.PI * preemphasisFrequency * dx)
 
-    for (let i = array.length - 1; i >= 2; i--)
+    for (let i = array.length - 1; i >= 1; i--)
         result[i] -= preEmphasis * result[i - 1]
 
     return result

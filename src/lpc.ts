@@ -1,3 +1,4 @@
+// Verified equivalent to Praat's Burg method.
 export function forwardLinearPrediction(
     sample: Float32Array,
     numCoeffs: number)
@@ -45,6 +46,101 @@ export function forwardLinearPrediction(
 
     // ASSIGN COEFFICIENTS
     return ak
+}
+
+
+// From: https://github.com/praat/praat/blob/master/dwsys/NUM2.cpp#L1370
+export function praatBurgMethod(
+    samples: Float32Array,
+    numCoeffs: number)
+    : number[]
+{
+    const a = new Array<number>(numCoeffs).fill(0)
+    
+	if (samples.length <= 2)
+    {
+		a[1] = -1.0
+        return a
+		//return ( n == 2 ? 0.5 * (x [1] * x [1] + x [2] * x [2]) : x [1] * x [1] );
+	}
+
+    const b1 = new Array<number>(samples.length).fill(0)
+    const b2 = new Array<number>(samples.length).fill(0)
+    const aa = new Array<number>(numCoeffs).fill(0)
+
+    const n = samples.length
+    const m = numCoeffs
+
+	// (3)
+
+	let p = 0
+	for (let j = 1; j <= n; j++)
+		p += samples[j - 1] * samples[j - 1]
+
+	let xms = p / n
+	if (xms <= 0)
+		return a // warning empty
+
+	// (9)
+
+	b1[1 - 1] = samples[1 - 1]
+	if (n < 2)
+		return a
+
+	b2[n - 1 - 1] = samples[n - 1]
+	for (let j = 2; j <= n - 1; j++)
+    {
+		b1[j - 1] = samples[j - 1]
+        b2[j - 1 - 1] = samples[j - 1]
+    }
+
+	for (let i = 1; i <= m; i++)
+    {
+		// (7)
+
+		let num = 0
+        let denum = 0
+		for (let j = 1; j <= n - i; j++)
+        {
+			num += b1[j - 1] * b2[j - 1]
+			denum += b1[j - 1] * b1[j - 1] + b2[j - 1] * b2[j - 1]
+		}
+
+		if (denum <= 0)
+			return a // warning ill-conditioned
+
+		a[i - 1] = 2 * num / denum
+
+		// (10)
+
+		xms *= 1 - a[i - 1] * a[i - 1]
+
+		// (5)
+
+		for (let j = 1; j <= i - 1; j++)
+			a[j - 1] = aa[j - 1] - a[i - 1] * aa[i - j - 1]
+
+		if (i < m)
+        {
+			// (8) Watch out: i -> i+1
+
+			for (let j = 1; j <= i; j++)
+				aa[j - 1] = a[j - 1]
+
+			for (let j = 1; j <= n - i - 1; j++)
+            {
+				b1[j - 1] -= aa[i - 1] * b2[j - 1]
+				b2[j - 1] = b2[j + 1 - 1] - aa[i - 1] * b1[j + 1 - 1]
+			}
+		}
+	}
+    
+    for (let i = 0; i < a.length; i++)
+        a[i] *= -1
+
+    a.unshift(1)
+
+	return a
 }
 
 

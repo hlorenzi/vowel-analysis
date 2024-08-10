@@ -1,5 +1,5 @@
 import { forwardLinearPrediction, praatBurgMethod } from "./lpc.ts"
-import { findRoots, Complex } from "./roots.ts"
+import { findRootsOfPolynomial, Complex } from "./roots.ts"
 
 
 // From: https://www.mathworks.com/help/signal/ug/formant-estimation-with-lpc-coefficients.html
@@ -27,32 +27,15 @@ export function extractFormants(
         //forwardLinearPrediction(sampleWindowed, 10)
         praatBurgMethod(sampleWindowed, 10)
 
-    const roots = findRoots(lpc)
+    const polynomial = praatLpcToPolynomial(lpc)
+    
+    const roots = findRootsOfPolynomial(polynomial)
         .filter(c => c.imag >= 0)
         .map(c => praatFixRootToUnitCircle(c))
         
-    const angles = roots
-        .map(c => Math.atan2(c.imag, c.real))
-
-    const nyquistFrequency = samplingFrequency / 2
-
-    const frequencies = angles
-        .map(a => a * nyquistFrequency / Math.PI)
-
-    const bandwidths = roots
-        .map(r => -Math.log(complexMagnitude(r)) * nyquistFrequency / Math.PI)
-
-    const formants = []
-    for (let i = 0; i < angles.length; i++)
-    {
-        const frequency = frequencies[i]
-        const bandwidth = bandwidths[i]
-        //if (frequency > 90 && frequency < 3500 && bandwidth < 1000)
-            formants.push(frequency)
-    }
-
-    formants.sort((a, b) => a - b)
-    return formants
+    const formants = rootsToFormants(roots, samplingFrequency)
+    console.log("formants", formants)
+    return formants.map(f => f.frequency)
 }
 
 
@@ -135,7 +118,18 @@ function praatPreemphasis(
 }
 
 
-function praatFixRootToUnitCircle(root: Complex)
+export function praatLpcToPolynomial(lpc: number[])
+{
+    const polynomial = new Array<number>(lpc.length)
+
+	for (let i = 0; i < lpc.length; i++)
+		polynomial[i] = lpc[lpc.length - 1 - i]
+
+    return polynomial
+}
+
+
+export function praatFixRootToUnitCircle(root: Complex)
 {
     if (complexMagnitude(root) <= 1)
         return root
@@ -143,4 +137,38 @@ function praatFixRootToUnitCircle(root: Complex)
     return complexDivide(
         { imag: 0, real: 1 },
         complexConjugate(root))
+}
+
+
+interface Formant
+{
+    frequency: number
+    bandwidth: number
+}
+
+
+export function rootsToFormants(
+    roots: Complex[],
+    samplingFrequency: number)
+    : Formant[]
+{
+    const nyquistFrequency = samplingFrequency / 2
+
+    const frequencies = roots
+        .map(c => Math.abs(Math.atan2(c.imag, c.real)) * nyquistFrequency / Math.PI)
+
+    const bandwidths = roots
+        .map(r => -Math.log(complexMagnitude(r)) * nyquistFrequency / Math.PI * 2)
+
+    const formants: Formant[] = []
+    for (let i = 0; i < frequencies.length; i++)
+    {
+        const frequency = frequencies[i]
+        const bandwidth = bandwidths[i]
+        //if (frequency > 90 && frequency < 3500 && bandwidth < 1000)
+            formants.push({ frequency, bandwidth })
+    }
+
+    formants.sort((a, b) => a.frequency - b.frequency)
+    return formants
 }

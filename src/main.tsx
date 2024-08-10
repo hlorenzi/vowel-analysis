@@ -7,7 +7,7 @@ import { VowelChart } from "./VowelChart.tsx"
 import { AnalysisChart } from "./AnalysisChart.tsx"
 import { RecordingPanel } from "./RecordingPanel.tsx"
 
-//import "./test.ts"
+import "./test.ts"
 
 
 function Page()

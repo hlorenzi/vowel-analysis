@@ -22,9 +22,10 @@ function Page()
             "margin": "auto",
             "text-align": "center",
         }}>
-            Click and drag to synthesize vowel sounds via formant frequencies.<br/><br/>
-            The blue bars on the bottom chart shows formant frequencies extracted from the waveform data. (Not working properly)
+            Click and drag around the top chart to synthesize vowel sounds via formant frequencies.<br/>
             <br/>
+            Red: computed frequency-domain data<br/>
+            Blue: computed formant frequencies<br/>
             <br/>
             <VowelChart synth={ synth() }/>
             <br/>

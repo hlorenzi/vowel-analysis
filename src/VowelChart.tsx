@@ -1,6 +1,7 @@
 import * as Solid from "solid-js"
 import { VowelSynth } from "./vowelSynth.ts"
-import * as Data from "./data.ts"
+import * as Common from "./common.ts"
+import { extractFormants } from "./formantExtractor.ts"
 //import * as Styled from "solid-styled-components"
 
 
@@ -32,7 +33,7 @@ export function VowelChart(props: {
         window.addEventListener("touchend", (ev) => mouseUp(state, ev));
         window.addEventListener("touchcancel", (ev) => mouseUp(state, ev));
         window.addEventListener("touchmove", (ev) => mouseMove(state, ev));
-        window.requestAnimationFrame(() => draw(state))
+        window.requestAnimationFrame(() => draw(props.synth, state))
     })
 
 
@@ -94,8 +95,8 @@ function updateMousePos(
     state.mousePosNormalized = { x, y }
 
     state.mousePosFormants = {
-        f1: Math.floor(mapViewToValue(y, Data.f1Min, Data.f1Max)),
-        f2: Math.floor(mapViewToValue(1 - x, Data.f2Min, Data.f2Max)),
+        f1: Math.floor(mapViewToValue(y, Common.f1Min, Common.f1Max)),
+        f2: Math.floor(mapViewToValue(1 - x, Common.f2Min, Common.f2Max)),
     }
 
     /*console.log(
@@ -189,9 +190,10 @@ const isMobile = window.matchMedia("(pointer: coarse)").matches
 
 
 function draw(
+    synth: VowelSynth,
     state: State)
 {
-    window.requestAnimationFrame(() => draw(state))
+    window.requestAnimationFrame(() => draw(synth, state))
 
     const pixelRatio = window.devicePixelRatio
     const rect = state.canvas.getBoundingClientRect()
@@ -216,10 +218,10 @@ function draw(
     state.ctx.fillStyle = "#ccc"
     state.ctx.beginPath()
     state.ctx.moveTo(w, h)
-    for (let freq = Data.f2Min; freq <= Data.f1Max; freq += 100)
+    for (let freq = Common.f2Min; freq <= Common.f1Max; freq += 100)
     {
-        const x = w - mapValueToView(freq, Data.f2Min, Data.f2Max) * w
-        const y = mapValueToView(freq, Data.f1Min, Data.f1Max) * h
+        const x = w - mapValueToView(freq, Common.f2Min, Common.f2Max) * w
+        const y = mapValueToView(freq, Common.f1Min, Common.f1Max) * h
         state.ctx.lineTo(x, y)
     }
     state.ctx.fill()
@@ -232,28 +234,28 @@ function draw(
     state.ctx.fillStyle = "#000"
     state.ctx.textAlign = "left"
     state.ctx.textBaseline = "top"
-    for (let freq = Data.f2Min + 500; freq < Data.f2Max; freq += 500)
+    for (let freq = Common.f2Min + 500; freq < Common.f2Max; freq += 500)
     {
-        const x = Math.floor(w - mapValueToView(freq, Data.f2Min, Data.f2Max) * w)
+        const x = Math.floor(w - mapValueToView(freq, Common.f2Min, Common.f2Max) * w)
         state.ctx.beginPath()
         state.ctx.moveTo(x, 0)
         state.ctx.lineTo(x, h)
         state.ctx.stroke()
         state.ctx.fillText(
-            freq == Data.f2Min + 500 ? `F2 = ${ freq } Hz` : `${ freq }`,
+            freq == Common.f2Min + 500 ? `F2 = ${ freq } Hz` : `${ freq }`,
             x + 2,
             2)
     }
     state.ctx.textBaseline = "bottom"
-    for (let freq = Data.f1Min + 200; freq <= Data.f1Max; freq += 200)
+    for (let freq = Common.f1Min + 200; freq <= Common.f1Max; freq += 200)
     {
-        const y = Math.floor(mapValueToView(freq, Data.f1Min, Data.f1Max) * h)
+        const y = Math.floor(mapValueToView(freq, Common.f1Min, Common.f1Max) * h)
         state.ctx.beginPath()
         state.ctx.moveTo(0, y)
         state.ctx.lineTo(w, y)
         state.ctx.stroke()
         state.ctx.fillText(
-            freq == Data.f1Max ? `F1 = ${ freq } Hz` : `${ freq }`,
+            freq == Common.f1Max ? `F1 = ${ freq } Hz` : `${ freq }`,
             2,
             y - 2)
     }
@@ -265,8 +267,8 @@ function draw(
     state.ctx.textBaseline = "middle"
     for (const vowel of ipaVowels)
     {
-        const x = Math.floor(w - mapValueToView(vowel.f2, Data.f2Min, Data.f2Max) * w)
-        const y = Math.floor(mapValueToView(vowel.f1, Data.f1Min, Data.f1Max) * h)
+        const x = Math.floor(w - mapValueToView(vowel.f2, Common.f2Min, Common.f2Max) * w)
+        const y = Math.floor(mapValueToView(vowel.f1, Common.f1Min, Common.f1Max) * h)
         state.ctx.fillText(vowel.symbol, x, y)
     }
 
@@ -277,7 +279,8 @@ function draw(
     {
         state.ctx.beginPath()
         const timer = Math.max(0, state.mousePath[p].timer)
-        state.ctx.strokeStyle = `rgb(0 40 255 / ${ 0.25 + 0.75 * timer })`
+        state.ctx.strokeStyle = Common.colorSynth
+        state.ctx.globalAlpha = 0.25 + 0.75 * timer
 
         const pA = state.mousePath[p - 1]
         const pB = state.mousePath[p]
@@ -294,6 +297,7 @@ function draw(
         state.ctx.lineTo(pA.x * w + vecYN * crossSize, pA.y * h - vecXN * crossSize)
 
         state.ctx.stroke()
+        state.ctx.globalAlpha = 1
     }
 
     state.mousePath.forEach((p) => p.timer -= 1 / 30)
@@ -301,7 +305,7 @@ function draw(
     // Draw mouse
     if (state.mouseDown)
     {
-        state.ctx.strokeStyle = "rgb(0 40 255)"
+        state.ctx.strokeStyle = Common.colorSynth
         state.ctx.lineWidth = 2
         state.ctx.beginPath()
         state.ctx.arc(
@@ -316,10 +320,42 @@ function draw(
         state.ctx.textAlign = "center"
         state.ctx.textBaseline = "bottom"
         state.ctx.fillText(
-            `(${ state.mousePosFormants.f1 }, ` +
-            `${ state.mousePosFormants.f2 } Hz)`,
+            `(${ state.mousePosFormants.f1.toFixed(0) }, ` +
+            `${ state.mousePosFormants.f2.toFixed(0) } Hz)`,
             state.mousePosNormalized.x * w,
             state.mousePosNormalized.y * h + (isMobile ? -120 : -10))
+    }
+
+    
+    const formants = synth.getCachedFormants()
+    if (formants.length >= 2)
+    {
+        const f1 = formants[0]
+        const f2 = formants[1]
+
+        const x = Math.floor(w - mapValueToView(f2, Common.f2Min, Common.f2Max) * w)
+        const y = Math.floor(mapValueToView(f1, Common.f1Min, Common.f1Max) * h)
+
+        state.ctx.strokeStyle = Common.colorFormants
+        state.ctx.fillStyle = Common.colorFormants
+        state.ctx.lineWidth = 2
+        state.ctx.beginPath()
+        state.ctx.arc(
+            x,
+            y,
+            2,
+            0,
+            Math.PI * 2)
+        state.ctx.stroke()
+
+        state.ctx.font = `${ isMobile ? "1.5em" : "0.75em" } Times New Roman`
+        state.ctx.textAlign = "center"
+        state.ctx.textBaseline = "bottom"
+        state.ctx.fillText(
+            `(${ f1.toFixed(0) }, ` +
+            `${ f2.toFixed(0) } Hz)`,
+            x,
+            y)
     }
 
     state.ctx.restore()

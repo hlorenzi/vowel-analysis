@@ -1,8 +1,8 @@
 import * as Solid from "solid-js"
 import { VowelSynth } from "./vowelSynth.ts"
-import * as Data from "./data.ts"
 import * as Common from "./common.ts"
 import * as Wav from "./wavEncode.ts"
+import { testExtractFormants } from "./test.ts"
 //import * as Styled from "solid-styled-components"
 
 
@@ -199,6 +199,8 @@ async function importWav(state: State)
     state.sampleBuffer.set(waveform, 0)
     state.recordingIndex = waveform.length
     recordingFinish(state)
+
+    testExtractFormants([...waveform], buffer.sampleRate)
 }
 
 

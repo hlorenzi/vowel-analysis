@@ -15,6 +15,10 @@ export function extractFormants(
     if (sample.every(s => s === 0))
         return []
 
+    console.log("== extractFormants ==")
+    console.log("samplingFrequency", samplingFrequency, "Hz")
+    console.log("sample length", sample.length, "samples =", sample.length / samplingFrequency, "seconds")
+
     const samplePreemphasized =
         //preemphasisFilter(sampleWindowed)
         praatPreemphasis(sample, samplingFrequency)
@@ -34,7 +38,7 @@ export function extractFormants(
         .map(c => praatFixRootToUnitCircle(c))
         
     const formants = rootsToFormants(roots, samplingFrequency)
-    console.log("formants", formants)
+    console.log("formants", formants.map(f => f.frequency.toFixed(0).padStart(4, " ")).join(", "), "Hz", formants)
     return formants.map(f => f.frequency)
 }
 
@@ -73,14 +77,14 @@ function hammingWindow(
 }
 
 
-function praatGaussianWindow(
+export function praatGaussianWindow(
     n: number,
     nMax: number)
 {
+    n += 1
     const nMid = 0.5 * (nMax + 1)
     const edge = Math.exp(-12.0)
-    return (Math.exp(-48.0 * (n - nMid) * (n - nMid) / (nMax + 1) / (nMax + 1)) - edge) /
-        (1.0 - edge)
+    return (Math.exp(-48.0 * (n - nMid) * (n - nMid) / (nMax + 1) / (nMax + 1)) - edge) / (1.0 - edge)
 }
 
 
@@ -101,7 +105,7 @@ function preemphasisFilter(
 }
 
 
-function praatPreemphasis(
+export function praatPreemphasis(
     array: Float32Array,
     samplingFrequency: number)
 {
@@ -153,6 +157,7 @@ export function rootsToFormants(
     : Formant[]
 {
     const nyquistFrequency = samplingFrequency / 2
+    const safetyMargin = 50
 
     const frequencies = roots
         .map(c => Math.abs(Math.atan2(c.imag, c.real)) * nyquistFrequency / Math.PI)
@@ -165,7 +170,9 @@ export function rootsToFormants(
     {
         const frequency = frequencies[i]
         const bandwidth = bandwidths[i]
-        //if (frequency > 90 && frequency < 3500 && bandwidth < 1000)
+        if (frequency > safetyMargin &&
+            frequency < nyquistFrequency - safetyMargin &&
+            frequency < 3500)
             formants.push({ frequency, bandwidth })
     }
 

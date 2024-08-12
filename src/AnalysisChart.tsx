@@ -1,7 +1,7 @@
 import * as Solid from "solid-js"
 import { VowelSynth } from "./vowelSynth.ts"
 import { extractFormants } from "./formantExtractor.ts"
-import * as Data from "./data.ts"
+import * as Common from "./common.ts"
 
 
 export function AnalysisChart(props: {
@@ -32,8 +32,8 @@ function mapValueToView(
     x: number,
     w: number)
 {
-    const min = Data.f1Min - 100
-    const max = Data.f2Max + 500
+    const min = Common.f1Min - 100
+    const max = Common.f2Max + 500
     const p = (x - min) / (max - min)
     const logScale = 10
     const t = Math.log((logScale - 1) * p + 1) / Math.log(logScale)
@@ -76,7 +76,7 @@ function draw(
     canvasCtx.fillStyle = "#000"
     canvasCtx.textAlign = "left"
     canvasCtx.textBaseline = "top"
-    for (let freq = Data.f2Min + 500; freq <= Data.f2Max; freq += 500)
+    for (let freq = Common.f2Min; freq <= Common.f2Max; freq += 500)
     {
         const x = Math.floor(mapValueToView(freq, w))
         
@@ -88,14 +88,14 @@ function draw(
     }
 
     canvasCtx.lineWidth = 2
-    canvasCtx.strokeStyle = "#f20"
+    canvasCtx.strokeStyle = Common.colorFrequencyDomain
     canvasCtx.beginPath()
     for (let i = 0; i < freqData.length; i++)
     {
-        const freq = i / freqData.length * (synth.ctx.sampleRate / 2)
-        if (freq < Data.f1Min - 100)
+        const freq = i / freqData.length * (synth.ctx.sampleRate / 1)
+        if (freq < Common.f1Min - 100)
             continue
-        if (freq > Data.f2Max + 500)
+        if (freq > Common.f2Max + 500)
             break
 
         const v = freqData[i] / 255
@@ -128,8 +128,10 @@ function draw(
     canvasCtx.stroke()
 
     const formants = extractFormants(timeData, synth.ctx.sampleRate)
+    synth.cacheFormants(formants)
+
     canvasCtx.lineWidth = 2
-    canvasCtx.strokeStyle = "#02f"
+    canvasCtx.strokeStyle = Common.colorFormants
     canvasCtx.globalAlpha = 0.75
     canvasCtx.beginPath()
     for (let i = 0; i < formants.length; i++)

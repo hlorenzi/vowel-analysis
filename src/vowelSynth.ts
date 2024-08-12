@@ -22,10 +22,12 @@ export class VowelSynth
     waveformBufferReturn: Float32Array
     waveformBufferIndex: number
 
+    cachedFormants: number[]
+
 
     static async create(): Promise<VowelSynth>
     {
-        const ctx = new AudioContext()
+        const ctx = new AudioContext({ sampleRate: 11000 })
         await ctx.audioWorklet.addModule("build/audioWorklet.js")
         return new VowelSynth(ctx)
     }
@@ -85,7 +87,7 @@ export class VowelSynth
 
         this.nodeSource = this.ctx.createOscillator()
         this.nodeSource.type = "sawtooth"
-        this.nodeSource.frequency.value = 120
+        this.nodeSource.frequency.value = 90
         this.nodeSource.connect(this.nodeFormant1Filter)
         this.nodeSource.connect(this.nodeFormant2Filter)
         this.nodeSource.start()
@@ -93,6 +95,8 @@ export class VowelSynth
 
         this.recordingBuffer = this.ctx.createBuffer(1, recordingBufferLength, this.ctx.sampleRate)
         this.recordingPlaybackStartTime = 0
+
+        this.cachedFormants = []
     }
 
 
@@ -154,6 +158,18 @@ export class VowelSynth
     {
         return this.getWaveform(
             (this.waveformBufferIndex + this.waveformBuffer.length - latestNumSamples) % this.waveformBuffer.length)
+    }
+
+
+    cacheFormants(formants: number[])
+    {
+        this.cachedFormants = formants
+    }
+
+
+    getCachedFormants(): number[]
+    {
+        return this.cachedFormants
     }
 
 

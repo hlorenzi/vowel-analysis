@@ -1,3 +1,14 @@
+export const f1Min = 200
+export const f1Max = 1200
+export const f2Min = 500
+export const f2Max = 3500
+
+
+export const colorSynth = "#284"
+export const colorFormants = "#02f"
+export const colorFrequencyDomain = "#f20"
+
+
 export function canvasResize(canvas: HTMLCanvasElement)
 {
     const pixelRatio = window.devicePixelRatio || 1

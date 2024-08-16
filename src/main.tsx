@@ -24,8 +24,8 @@ function Page()
         }}>
             Click and drag around the top chart to synthesize vowel sounds via formant frequencies.<br/>
             <br/>
-            Red: computed frequency-domain data<br/>
-            Blue: computed formant frequencies<br/>
+            Red: extracted frequency-domain data from waveform<br/>
+            Blue: extracted formant frequencies from waveform<br/>
             <br/>
             <VowelChart synth={ synth() }/>
             <br/>
@@ -33,8 +33,8 @@ function Page()
             <br/>
             <RecordingPanel synth={ synth() }/>
             { " " }
-            <button onclick={ () => synth().openMic() }>
-                Allow Microphone
+            <button onclick={ () => synth().toggleMic() }>
+                Toggle Microphone
             </button>
         </div>
     </Solid.Show>

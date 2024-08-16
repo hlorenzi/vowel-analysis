@@ -107,10 +107,10 @@ function draw(
     }
     canvasCtx.stroke()
 
-    const timeData = synth.getWaveformLatest(Math.floor(synth.ctx.sampleRate * 0.025))
+    const timeData = synth.getWaveformLatest(Math.floor(synth.ctx.sampleRate * 0.05))
 
-    canvasCtx.lineWidth = 2
-    canvasCtx.strokeStyle = "#000"
+    canvasCtx.lineWidth = 1
+    canvasCtx.strokeStyle = "#0008"
     canvasCtx.beginPath()
     canvasCtx.moveTo(0, h / 2)
     for (let i = 0; i < timeData.length; i++)

@@ -268,7 +268,7 @@ function draw(state: State)
     // Draw playing head
     if (state.playing)
     {
-        state.ctx.strokeStyle = "#00f"
+        state.ctx.strokeStyle = Common.colorSynth
         state.ctx.lineWidth = 2
         state.ctx.beginPath()
         state.ctx.moveTo(sampleIndexToX(state.playingIndex), 0)

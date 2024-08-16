@@ -20,6 +20,7 @@ export function VowelChart(props: {
         mousePosNormalized: { x: 0, y: 0 },
         mousePosFormants: { f1: 0, f2: 0 },
         mousePath: [],
+        formantPath: [],
     }
 
 
@@ -76,6 +77,7 @@ interface State
         f2: number
     }
     mousePath: PathPoint[]
+    formantPath: PathPoint[]
 }
 
 
@@ -272,15 +274,40 @@ function draw(
         state.ctx.fillText(vowel.symbol, x, y)
     }
 
+    // Draw extracted formants path
+    state.ctx.strokeStyle = Common.colorFormants
+    state.ctx.lineWidth = 2
+    for (let p = 1; p < state.formantPath.length; p++)
+    {
+        state.ctx.beginPath()
+        const timer = Math.max(0, state.formantPath[p].timer)
+        state.ctx.globalAlpha = timer
+
+        const pA = state.formantPath[p - 1]
+        const pB = state.formantPath[p]
+        const vecX = (pB.x - pA.x) * w
+        const vecY = (pB.y - pA.y) * h
+        const vecMagn = Math.sqrt(vecX * vecX + vecY * vecY)
+
+        if (vecMagn < w / 4)
+        {
+            state.ctx.moveTo(pA.x * w, pA.y * h)
+            state.ctx.lineTo(pB.x * w, pB.y * h)
+            state.ctx.arc(pA.x * w, pA.y * h, 2, 0, Math.PI * 2)
+        }
+
+        state.ctx.stroke()
+        state.ctx.globalAlpha = 1
+    }
+
     // Draw mouse path
-    state.ctx.strokeStyle = "#048"
+    state.ctx.strokeStyle = Common.colorSynth
     state.ctx.lineWidth = 2
     for (let p = 1; p < state.mousePath.length; p++)
     {
         state.ctx.beginPath()
         const timer = Math.max(0, state.mousePath[p].timer)
-        state.ctx.strokeStyle = Common.colorSynth
-        state.ctx.globalAlpha = 0.25 + 0.75 * timer
+        state.ctx.globalAlpha = timer
 
         const pA = state.mousePath[p - 1]
         const pB = state.mousePath[p]
@@ -306,6 +333,7 @@ function draw(
     if (state.mouseDown)
     {
         state.ctx.strokeStyle = Common.colorSynth
+        state.ctx.fillStyle = Common.colorSynth
         state.ctx.lineWidth = 2
         state.ctx.beginPath()
         state.ctx.arc(
@@ -328,6 +356,8 @@ function draw(
 
     
     const formants = synth.getCachedFormants()
+    state.formantPath.forEach((p) => p.timer -= 1 / 60)
+
     if (formants.length >= 2)
     {
         const f1 = formants[0]
@@ -335,6 +365,10 @@ function draw(
 
         const x = Math.floor(w - mapValueToView(f2, Common.f2Min, Common.f2Max) * w)
         const y = Math.floor(mapValueToView(f1, Common.f1Min, Common.f1Max) * h)
+
+        state.formantPath.push({ x: x / w, y: y / h, timer: 1 })
+        while (state.formantPath.length > 100)
+            state.formantPath.splice(0, 1)
 
         state.ctx.strokeStyle = Common.colorFormants
         state.ctx.fillStyle = Common.colorFormants

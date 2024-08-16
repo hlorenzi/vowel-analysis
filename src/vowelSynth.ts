@@ -9,6 +9,10 @@ export class VowelSynth
     nodeFormant1Gain: GainNode
     nodeFormant2Filter: BiquadFilterNode
     nodeFormant2Gain: GainNode
+    nodeFormant3Filter: BiquadFilterNode
+    nodeFormant3Gain: GainNode
+    nodeFormant4Filter: BiquadFilterNode
+    nodeFormant4Gain: GainNode
     nodeAnalyser: AnalyserNode
     nodeAnalyserData: Uint8Array
     nodeAnalyserTimeDomainData: Float32Array
@@ -84,12 +88,38 @@ export class VowelSynth
         this.nodeFormant2Filter.Q.value = 5
         this.nodeFormant2Filter.connect(this.nodeFormant2Gain)
 
+        
+        this.nodeFormant3Gain = this.ctx.createGain()
+        this.nodeFormant3Gain.gain.value = 0
+        this.nodeFormant3Gain.connect(this.nodeAnalyser)
+        this.nodeFormant3Gain.connect(this.ctx.destination)
+
+        this.nodeFormant3Filter = this.ctx.createBiquadFilter()
+        this.nodeFormant3Filter.type = "bandpass"
+        this.nodeFormant3Filter.frequency.value = 0
+        this.nodeFormant3Filter.Q.value = 5
+        this.nodeFormant3Filter.connect(this.nodeFormant3Gain)
+
+        
+        this.nodeFormant4Gain = this.ctx.createGain()
+        this.nodeFormant4Gain.gain.value = 0
+        this.nodeFormant4Gain.connect(this.nodeAnalyser)
+        this.nodeFormant4Gain.connect(this.ctx.destination)
+
+        this.nodeFormant4Filter = this.ctx.createBiquadFilter()
+        this.nodeFormant4Filter.type = "bandpass"
+        this.nodeFormant4Filter.frequency.value = 0
+        this.nodeFormant4Filter.Q.value = 5
+        this.nodeFormant4Filter.connect(this.nodeFormant4Gain)
+
 
         this.nodeSource = this.ctx.createOscillator()
         this.nodeSource.type = "sawtooth"
         this.nodeSource.frequency.value = 90
         this.nodeSource.connect(this.nodeFormant1Filter)
         this.nodeSource.connect(this.nodeFormant2Filter)
+        //this.nodeSource.connect(this.nodeFormant3Filter)
+        //this.nodeSource.connect(this.nodeFormant4Filter)
         this.nodeSource.start()
 
 
@@ -111,13 +141,20 @@ export class VowelSynth
         const generalGain = 0.5
         this.nodeFormant1Gain.gain.value = gain * generalGain
         this.nodeFormant2Gain.gain.value = gain * generalGain * 0.8
+        this.nodeFormant3Gain.gain.value = gain * generalGain * 0.5
+        this.nodeFormant4Gain.gain.value = gain * generalGain * 0.2
     }
 
 
     setFrequencies(formant1Freq: number, formant2Freq: number)
     {
+        formant1Freq = Math.max(0, Math.min(5000, formant1Freq))
+        formant2Freq = Math.max(0, Math.min(5000, formant2Freq))
+
         this.nodeFormant1Filter.frequency.value = formant1Freq
         this.nodeFormant2Filter.frequency.value = formant2Freq
+        this.nodeFormant3Filter.frequency.value = 2700
+        this.nodeFormant4Filter.frequency.value = 3500
     }
 
 
@@ -205,10 +242,14 @@ export class VowelSynth
     }
 
 
-    async openMic()
+    async toggleMic()
     {
         if (this.nodeMicSrc)
+        {
+            this.nodeMicSrc.disconnect()
+            this.nodeMicSrc = undefined
             return
+        }
 
         try
         {
